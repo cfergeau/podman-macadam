@@ -61,11 +61,6 @@ func (q *QEMUStubber) setQEMUCommandLine(mc *vmconfigs.MachineConfig) error {
 		return err
 	}
 
-	readySocket, err := mc.ReadySocket()
-	if err != nil {
-		return err
-	}
-
 	q.QEMUPidPath = mc.QEMUHypervisor.QEMUPidPath
 
 	q.Command = command.NewQemuBuilder(qemuBinary, q.addArchOptions(nil))
@@ -81,7 +76,13 @@ func (q *QEMUStubber) setQEMUCommandLine(mc *vmconfigs.MachineConfig) error {
 	if err := q.Command.SetNetwork(gvProxySock); err != nil {
 		return err
 	}
-	q.Command.SetSerialPort(*readySocket, *mc.QEMUHypervisor.QEMUPidPath, mc.Name)
+	if mc.Capabilities.GetHasReadyUnit() {
+		readySocket, err := mc.ReadySocket()
+		if err != nil {
+			return err
+		}
+		q.Command.SetSerialPort(*readySocket, *mc.QEMUHypervisor.QEMUPidPath, mc.Name)
+	}
 
 	q.Command.SetUSBHostPassthrough(mc.Resources.USBs)
 
@@ -150,11 +151,6 @@ func (q *QEMUStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func()
 		return nil, nil, fmt.Errorf("unable to generate qemu command line: %q", err)
 	}
 
-	readySocket, err := mc.ReadySocket()
-	if err != nil {
-		return nil, nil, err
-	}
-
 	gvProxySock, err := mc.GVProxySocket()
 	if err != nil {
 		return nil, nil, err
@@ -220,8 +216,16 @@ func (q *QEMUStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func()
 	}
 	logrus.Debugf("Started qemu pid %d", cmd.Process.Pid)
 
-	readyFunc := func() error {
-		return waitForReady(readySocket, cmd.Process.Pid, stderrBuf)
+	readyFunc := func() error { return nil }
+	if mc.Capabilities.GetHasReadyUnit() {
+		readySocket, err := mc.ReadySocket()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		readyFunc = func() error {
+			return waitForReady(readySocket, cmd.Process.Pid, stderrBuf)
+		}
 	}
 
 	releaseFunc := func() error {
