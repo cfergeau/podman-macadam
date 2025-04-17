@@ -9,7 +9,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.podman.io/common/pkg/config"
 	"go.podman.io/common/pkg/strongunits"
-	"go.podman.io/podman/v6/pkg/machine"
 	"go.podman.io/podman/v6/pkg/machine/cloudinit"
 	"go.podman.io/podman/v6/pkg/machine/define"
 	"go.podman.io/podman/v6/pkg/machine/sockets"
@@ -301,35 +299,8 @@ func getFirstBootAppleVMIgnition(mc *vmconfigs.MachineConfig) ([]string, error) 
 }
 
 func getFirstBootAppleVMCloudInit(mc *vmconfigs.MachineConfig) ([]string, error) {
-	sshKey, err := machine.GetSSHKeys(mc.SSH.IdentityPath)
-	if err != nil {
-		return nil, err
-	}
-
-	machineDataDir, err := mc.DataDir()
-	if err != nil {
-		return nil, err
-	}
-
-	// delete previous user-data, if any
-	if err := os.Remove(filepath.Join(machineDataDir.Path, "user-data")); err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
-
 	// we generate the user-data file
-	userDataFile, err := cloudinit.GenerateUserData(machineDataDir.Path, cloudinit.UserData{
-		Users: []cloudinit.User{
-			cloudinit.User{
-				Name:   mc.SSH.RemoteUsername,
-				Sudo:   "ALL=(ALL) NOPASSWD:ALL",
-				Shell:  "/bin/bash",
-				Groups: "users",
-				SSHKeys: []string{
-					sshKey,
-				},
-			},
-		},
-	})
+	userDataFile, err := cloudinit.GenerateUserDataFile(mc)
 	if err != nil {
 		return nil, err
 	}
