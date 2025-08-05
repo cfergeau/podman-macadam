@@ -66,10 +66,11 @@ type SSHOptions struct {
 }
 
 type StartOptions struct {
-	ReExec  bool
-	NoInfo  bool
-	Quiet   bool
-	Rosetta bool
+	ReExec      bool
+	NoInfo      bool
+	Quiet       bool
+	Rosetta     bool
+	MaxBackoffs int
 }
 
 type StopOptions struct{}
