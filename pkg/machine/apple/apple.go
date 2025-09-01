@@ -377,6 +377,11 @@ func Remove(mc *vmconfigs.MachineConfig) ([]string, func() error, error) {
 		rmFiles = append(rmFiles, ignitionSocket.GetPath())
 	}
 
+	cloudinitISO, err := cloudinit.GetCloudInitISOVMFile(mc)
+	if err == nil {
+		rmFiles = append(rmFiles, cloudinitISO.GetPath())
+	}
+
 	rmFunc := func() error {
 		var errs []error
 
@@ -386,6 +391,12 @@ func Remove(mc *vmconfigs.MachineConfig) ([]string, func() error, error) {
 
 		if ignitionSocket != nil {
 			if err := ignitionSocket.Delete(); err != nil {
+				errs = append(errs, err)
+			}
+		}
+
+		if cloudinitISO != nil {
+			if err := cloudinitISO.Delete(); err != nil {
 				errs = append(errs, err)
 			}
 		}
